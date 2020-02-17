@@ -1,12 +1,13 @@
 let rowData = [];
 let pieData = [];
-let barDate = [];
+let barData = [];
 d3.csv('assests/data/sales-data-set.csv', (res) => {
     rowData.push(res);
 }).then(() => {
     let data = [...rowData];
-    console.log(rowData);
+    // console.log(rowData);
     pieObj = {};
+    barObj = {};
     data.map(item => {
             const date = item.Date.split('/');
             item.Date = date[2];
@@ -18,6 +19,7 @@ d3.csv('assests/data/sales-data-set.csv', (res) => {
             if (ele.IsHoliday === 'TRUE') {
                 pieObj[ele.Date] = pieObj[ele.Date] ? pieObj[ele.Date] + 1 : 1;
             }
+            barObj[ele.Date] = barObj[ele.Date] ? barObj[ele.Date] + parseFloat(ele.Weekly_Sales) : parseFloat(ele.Weekly_Sales);
         });
     for (const key in pieObj) {
         if (pieObj.hasOwnProperty(key)) {
@@ -27,8 +29,18 @@ d3.csv('assests/data/sales-data-set.csv', (res) => {
             });
         }
     }
-    console.log(pieData);
+    for (const key in barObj) {
+        if (barObj.hasOwnProperty(key)) {
+            barData.push({
+                name: key,
+                value: parseInt(barObj[key], 10)
+            });
+        }
+    }
+    // console.log(barData);
+    // console.log(pieData);
     drawPie();
+    drawBarChart();
 
 });
 
@@ -51,7 +63,7 @@ function drawPie() {
         .append('svg')
         .attr('class', 'pie')
         .attr('width', width)
-        .attr('height', height + 50);
+        .attr('height', height + 70);
 
     let g = svg.append('g')
         .attr('transform', 'translate(' + (width / 2) + ',' + (height / 2) + ')');
@@ -64,7 +76,7 @@ function drawPie() {
         .value(function(d) { return d.value; })
         .sort(null);
 
-    let path = g.selectAll('path')
+    g.selectAll('path')
         .data(pie(data))
         .enter()
         .append("g")
@@ -79,63 +91,13 @@ function drawPie() {
             d3.select(this)
                 .style("opacity", opacityHover);
 
-            let g = d3.select("svg")
-                .style("cursor", "pointer")
-                .append("g")
-                .attr("class", "tooltip-ele")
-                .style("opacity", 0);
 
-            g.append("text")
-                .attr("class", "name-text")
-                .text(`${d.data.name} (${d.data.value})`)
-                .attr('text-anchor', 'middle');
-
-            let text = g.select("text");
-            let bbox = text.node().getBBox();
-            let padding = 2;
-            g.insert("rect", "text")
-                .attr("x", bbox.x - padding)
-                .attr("y", bbox.y - padding)
-                .attr("width", bbox.width + (padding * 2))
-                .attr("height", bbox.height + (padding * 2))
-                .style("fill", "white")
-                .style("opacity", 0.75);
         })
-        .on("mousemove", function(d) {
-            let mousePosition = d3.mouse(this);
-            let x = mousePosition[0] + width / 2;
-            let y = mousePosition[1] + height / 2 - tooltipMargin;
 
-            let text = d3.select('.tooltip-ele text');
-            let bbox = text.node().getBBox();
-            if (x - bbox.width / 2 < 0) {
-                x = bbox.width / 2;
-            } else if (width - x - bbox.width / 2 < 0) {
-                x = width - bbox.width / 2;
-            }
-
-            if (y - bbox.height / 2 < 0) {
-                y = bbox.height + tooltipMargin * 2;
-            } else if (height - y - bbox.height / 2 < 0) {
-                y = height - bbox.height / 2;
-            }
-
-            d3.select('.tooltip-ele')
-                .style("opacity", 1)
-                .attr('transform', `translate(${x}, ${y})`);
-        })
-        .on("mouseout", function(d) {
-            d3.select("svg")
-                .style("cursor", "none")
-                .select(".tooltip-ele").remove();
-            d3.selectAll('path')
-                .style("opacity", opacity);
-        })
-        .on("touchstart", function(d) {
-            d3.select("svg")
-                .style("cursor", "none");
-        })
-        .each(function(d, i) { this._current = i; });
+    .on("mouseout", function(d) {
+        d3.selectAll('path')
+            .style("opacity", opacity);
+    });
 
     let legend = d3.select("#pie").append('div')
         .attr('class', 'legend')
@@ -167,4 +129,56 @@ function drawPie() {
         .attr("y", height + 10)
         .style("text-anchor", "middle")
         .text("Pie chart for no of holidays");
+}
+
+function drawBarChart() {
+    console.log(barData);
+    let color = d3.scaleOrdinal(d3.schemeCategory10);
+    const data = [...barData];
+    // set the dimensions and margins of the graph
+    var margin = { top: 20, right: 20, bottom: 40, left: 80 },
+        width = 400 - margin.left - margin.right,
+        height = 370 - margin.top - margin.bottom;
+
+    var x = d3.scaleBand()
+        .range([0, width])
+        .padding(0.1);
+    var y = d3.scaleLinear()
+        .range([height, 0]);
+    var svg = d3.select("#bar").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform",
+            "translate(" + margin.left + "," + margin.top + ")");
+
+
+    x.domain(data.map(function(d) { return d.name; }));
+    y.domain([0, d3.max(data, function(d) { return d.value; })]);
+
+    svg.selectAll(".bar")
+        .data(data)
+        .enter().append("rect")
+        .attr("class", "bar")
+        .attr('fill', (d, i) => color(i))
+        .attr("x", function(d) { return x(d.name); })
+        .attr("width", x.bandwidth())
+        .attr("y", function(d) { return y(d.value); })
+        .attr("height", function(d) { return height - y(d.value); });
+
+    // add the x Axis
+    svg.append("g")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x));
+
+    // add the y Axis
+    svg.append("g")
+        .call(d3.axisLeft(y));
+    svg.append("text")
+        .attr('class', 'title')
+        .attr("x", width / 2)
+        .attr("y", height + 40)
+        .style("text-anchor", "middle")
+        .text("Bar chart for Sales in year");
+
 }
