@@ -151,5 +151,6 @@ svg {
 .chart-box {
     border: 2px solid gray;
     box-shadow: 5px 5px 10px grey;
-    margin: 10px
+    margin: 10px;
+    /* min-height: 400px; */
 }
