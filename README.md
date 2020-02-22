@@ -1,6 +1,6 @@
 # Project Title
 
-Visualization assessment
+Visualization Assessment (with Pie chart and Bar chart)
 
 # Project description
 
